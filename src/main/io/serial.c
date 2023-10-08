@@ -208,7 +208,7 @@ void pgResetFn_serialConfig(serialConfig_t *serialConfig)
 #endif
 
 #if defined(USE_MSP_UART)
-    serialPortConfig_t * uart1Config = serialFindPortConfigurationMutable(USE_MSP_UART);
+    serialPortConfig_t * uart1Config = serialFindPortConfigurationMutable(SERIAL_PORT_USART3);
     if (uart1Config) {
         uart1Config->functionMask = FUNCTION_MSP;
     }

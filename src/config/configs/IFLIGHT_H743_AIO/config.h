@@ -85,7 +85,7 @@
 #define ADC_VBAT_PIN         PC3
 #define ADC_RSSI_PIN         PC5
 #define ADC_CURR_PIN         PC2
-#define MAX7456_SPI_CS_PIN   PE4  
+#define MAX7456_SPI_CS_PIN   PE4
 #define GYRO_1_EXTI_PIN      PD0
 #define GYRO_2_EXTI_PIN      PD8
 #define GYRO_1_CS_PIN        PA4

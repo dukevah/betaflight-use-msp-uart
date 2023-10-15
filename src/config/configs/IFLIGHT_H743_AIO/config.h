@@ -43,7 +43,7 @@
 
 #define MOTOR1_PIN           PB0
 
-#define MOTOR2_PIN           PB01
+#define MOTOR2_PIN           PB1
 
 #define MOTOR3_PIN           PE9
 

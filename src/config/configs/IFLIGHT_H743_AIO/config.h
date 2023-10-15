@@ -146,7 +146,7 @@
 
 
 #define TIMER_PIN_MAPPING \
-    TIMER_PIN_MAP( 0, PA8, 1, 14) \
+    TIMER_PIN_MAP( 0, PA12, 1, 14) \
     TIMER_PIN_MAP( 1, PA3 , 1,  0) \
     TIMER_PIN_MAP( 2, PB0 , 2,  0) \
     TIMER_PIN_MAP( 3, PB1 , 2,  1) \

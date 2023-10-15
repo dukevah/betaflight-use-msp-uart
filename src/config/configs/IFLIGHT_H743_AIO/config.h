@@ -40,110 +40,57 @@
 
 
 #define BEEPER_PIN           PD15
-
 #define MOTOR1_PIN           PB0
-
 #define MOTOR2_PIN           PB1
-
 #define MOTOR3_PIN           PE9
-
 #define MOTOR4_PIN           PE11
-
 #define MOTOR5_PIN           PB4
-
 #define MOTOR6_PIN           PB5
-
 #define MOTOR7_PIN           PE13
-
 #define MOTOR8_PIN           PE14
-
 #define RX_PPM_PIN           PA3
-
 #define LED_STRIP_PIN        PD12
-
 #define UART1_TX_PIN         PA9
-
 #define UART2_TX_PIN         PA2
-
 #define UART3_TX_PIN         PB10
-
 #define UART4_TX_PIN         PA0
-
 #define UART6_TX_PIN         PC6
-
 #define UART7_TX_PIN         PE8
-
 #define UART8_TX_PIN         PE1
-
 #define UART1_RX_PIN         PA10
-
 #define UART2_RX_PIN         PA3
-
 #define UART3_RX_PIN         PB11
-
 #define UART4_RX_PIN         PA1
-
 #define UART6_RX_PIN         PC7
-
 #define UART7_RX_PIN         PE7
-
 #define UART8_RX_PIN         PE0
-
 #define I2C1_SCL_PIN         PB8
-
 #define I2C1_SDA_PIN         PB9
-
 #define I2C2_SCL_PIN         PB10
-
 #define I2C2_SDA_PIN         PB11
-
 #define LED0_PIN             PC13
-
 #define SPI1_SCK_PIN         PA5
-
 #define SPI2_SCK_PIN         PB13
-
 #define SPI3_SCK_PIN         PC10
-
 #define SPI4_SCK_PIN         PE2
-
 #define SPI1_SDI_PIN         PA6
-
 #define SPI2_SDI_PIN         PB14
-
 #define SPI3_SDI_PIN         PC11
-
 #define SPI4_SDI_PIN         PE5
-
 #define SPI1_SDO_PIN         PA7
-
 #define SPI2_SDO_PIN         PB15
-
 #define SPI3_SDO_PIN         PC12
-
 #define SPI4_SDO_PIN         PE6
-
 #define CAMERA_CONTROL_PIN   PC8
-
 #define ADC_VBAT_PIN         PC3
-
 #define ADC_RSSI_PIN         PC5
-
 #define ADC_CURR_PIN         PC2
-
-//-> not found
 #define MAX7456_SPI_CS_PIN   PE4  
-
 #define GYRO_1_EXTI_PIN      PD0
-
 #define GYRO_2_EXTI_PIN      PD8
-
 #define GYRO_1_CS_PIN        PA4
-
 #define GYRO_2_CS_PIN        PB12
-
 #define FLASH_CS_PIN         PA15
-
 
 #define TIMER_PIN_MAPPING \
     TIMER_PIN_MAP( 0, PA12, 1, 14) \
@@ -159,20 +106,11 @@
 
 
 #define ADC1_DMA_OPT        8
-
-// is none for v1
-// #define ADC2_DMA_OPT        9 
-
 #define ADC3_DMA_OPT       9
-
 #define TIMUP1_DMA_OPT      0
-
 #define TIMUP2_DMA_OPT      0
-
 #define TIMUP3_DMA_OPT      0
-
 #define TIMUP4_DMA_OPT      0
-
 #define TIMUP8_DMA_OPT      0
 
 

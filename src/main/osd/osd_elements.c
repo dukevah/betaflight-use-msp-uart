@@ -119,6 +119,8 @@
 #include "build/build_config.h"
 #include "build/debug.h"
 
+#include "cli/settings.h"
+
 #include "common/axis.h"
 #include "common/maths.h"
 #include "common/printf.h"
@@ -266,12 +268,12 @@ static int getEscRpm(int i)
 {
 #ifdef USE_DSHOT_TELEMETRY
     if (motorConfig()->dev.useDshotTelemetry) {
-        return erpmToRpm(getDshotTelemetry(i));
+        return lrintf(getDshotRpm(i));
     }
 #endif
 #ifdef USE_ESC_SENSOR
     if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
-        return erpmToRpm(getEscSensorData(i)->rpm);
+        return lrintf(erpmToRpm(getEscSensorData(i)->rpm));
     }
 #endif
     return 0;
@@ -434,9 +436,14 @@ void osdFormatDistanceString(char *ptr, int distance, char leadingSymbol)
     osdPrintFloat(ptr, leadingSymbol, displayDistance, "", decimalPlaces, false, displaySymbol);
 }
 
-static void osdFormatPID(char * buff, const char * label, const pidf_t * pid)
+static void osdFormatPID(char * buff, const char * label, uint8_t axis)
 {
-    tfp_sprintf(buff, "%s %3d %3d %3d %3d", label, pid->P, pid->I, pid->D, pid->F);
+    tfp_sprintf(buff, "%s %3d %3d %3d %3d %3d", label,
+        currentPidProfile->pid[axis].P,
+        currentPidProfile->pid[axis].I,
+        currentPidProfile->pid[axis].D,
+        currentPidProfile->d_min[axis],
+        currentPidProfile->pid[axis].F);
 }
 
 #ifdef USE_RTC_TIME
@@ -1417,17 +1424,17 @@ static void osdElementPidRateProfile(osdElementParms_t *element)
 
 static void osdElementPidsPitch(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, "PIT", &currentPidProfile->pid[PID_PITCH]);
+    osdFormatPID(element->buff, "PIT", PID_PITCH);
 }
 
 static void osdElementPidsRoll(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, "ROL", &currentPidProfile->pid[PID_ROLL]);
+    osdFormatPID(element->buff, "ROL", PID_ROLL);
 }
 
 static void osdElementPidsYaw(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, "YAW", &currentPidProfile->pid[PID_YAW]);
+    osdFormatPID(element->buff, "YAW", PID_YAW);
 }
 
 static void osdElementPower(osdElementParms_t *element)
@@ -1781,6 +1788,7 @@ static const uint8_t osdElementDisplayOrder[] = {
     OSD_TOTAL_FLIGHTS,
 #endif
     OSD_AUX_VALUE,
+#ifdef USE_OSD_HD
     OSD_SYS_GOGGLE_VOLTAGE,
     OSD_SYS_VTX_VOLTAGE,
     OSD_SYS_BITRATE,
@@ -1792,6 +1800,7 @@ static const uint8_t osdElementDisplayOrder[] = {
     OSD_SYS_WARNINGS,
     OSD_SYS_VTX_TEMP,
     OSD_SYS_FAN_SPEED,
+#endif
 };
 
 // Define the mapping between the OSD element id and the function to draw it
@@ -2106,6 +2115,62 @@ bool osdDrawNextActiveElement(displayPort_t *osdDisplayPort, timeUs_t currentTim
 
     return retval;
 }
+
+#ifdef USE_SPEC_PREARM_SCREEN
+void osdDrawSpec(displayPort_t *osdDisplayPort)
+{
+    if (!ARMING_FLAG(ARMED) && osdConfig()->osd_show_spec_prearm) {
+        const uint8_t midRow = osdDisplayPort->rows / 2;
+        const uint8_t midCol = osdDisplayPort->cols / 2;
+
+        char buff[OSD_ELEMENT_BUFFER_LENGTH] = "";
+
+        memset(buff,0,strlen(buff));
+        int len = 0;
+        int currentRow = midRow - 3;
+
+#ifdef USE_RPM_LIMIT
+        const bool rpmLimitActive = mixerConfig()->rpm_limit > 0 && isMotorProtocolBidirDshot();
+        if (rpmLimitActive) {
+            len = tfp_sprintf(buff, "RPM LIMIT ON  %d", mixerConfig()->rpm_limit_value);
+        } else {
+            len = tfp_sprintf(buff, "%s", "RPM LIMIT OFF");
+        }
+        displayWrite(osdDisplayPort, midCol - len/2, currentRow++, DISPLAYPORT_SEVERITY_NORMAL, buff);
+
+        if (rpmLimitActive) {
+            memset(buff,0,strlen(buff));
+            len = tfp_sprintf(buff, "KV %d   POLES %d", motorConfig()->kv, motorConfig()->motorPoleCount);
+            displayWrite(osdDisplayPort, midCol - len/2, currentRow++, DISPLAYPORT_SEVERITY_NORMAL, buff);
+
+            memset(buff,0,strlen(buff));
+            len = tfp_sprintf(buff, "%d  %d  %d", mixerConfig()->rpm_limit_p, mixerConfig()->rpm_limit_i, mixerConfig()->rpm_limit_d);
+            displayWrite(osdDisplayPort, midCol - len/2, currentRow++, DISPLAYPORT_SEVERITY_NORMAL, buff);
+        } else
+#endif // #USE_RPM_LIMIT
+        {
+            memset(buff,0,strlen(buff));
+            len = tfp_sprintf(buff, "THR LIMIT %s", lookupTableThrottleLimitType[currentControlRateProfile->throttle_limit_type]);
+            if (currentControlRateProfile->throttle_limit_type != THROTTLE_LIMIT_TYPE_OFF) {
+                len = tfp_sprintf(buff, "%s %d", buff, currentControlRateProfile->throttle_limit_percent);
+            }
+            displayWrite(osdDisplayPort, midCol - len/2, currentRow++, DISPLAYPORT_SEVERITY_NORMAL, buff);
+        }
+
+        memset(buff,0,strlen(buff));
+        len = tfp_sprintf(buff, "MOTOR LIMIT %d", currentPidProfile->motor_output_limit);
+        displayWrite(osdDisplayPort, midCol - len/2, currentRow++, DISPLAYPORT_SEVERITY_NORMAL, buff);
+
+        memset(buff,0,strlen(buff));
+        const float batteryVoltage = getBatteryVoltage() / 100.0f;
+        len = osdPrintFloat(buff, osdGetBatterySymbol(getBatteryAverageCellVoltage()), batteryVoltage, "", 2, true, SYM_VOLT);
+        displayWrite(osdDisplayPort, midCol - len/2, currentRow++, DISPLAYPORT_SEVERITY_NORMAL, buff);
+
+        len = strlen(FC_VERSION_STRING);
+        displayWrite(osdDisplayPort, midCol - len/2, currentRow++, DISPLAYPORT_SEVERITY_NORMAL, FC_VERSION_STRING);
+    }
+}
+#endif // USE_SPEC_PREARM_SCREEN
 
 void osdDrawActiveElementsBackground(displayPort_t *osdDisplayPort)
 {

@@ -367,11 +367,6 @@ static void logErrorToPacketLog(void)
 }
 #endif  // USE_DASHBOARD
 
-static bool isConfiguratorConnected(void)
-{
-    return (getArmingDisableFlags() & ARMING_DISABLED_MSP);
-}
-
 static void gpsNewData(uint16_t c);
 #ifdef USE_GPS_NMEA
 static bool gpsNewFrameNMEA(char c);
@@ -395,7 +390,6 @@ void gpsInit(void)
     gpsDataIntervalSeconds = 0.1f;
     gpsData.userBaudRateIndex = 0;
     gpsData.timeouts = 0;
-    gpsData.satMessagesDisabled = false;
     gpsData.state_ts = millis();
 #ifdef USE_GPS_UBLOX
     gpsData.ubloxUsingFlightModel = false;
@@ -435,6 +429,7 @@ void gpsInit(void)
     gpsData.tempBaudRateIndex = gpsData.userBaudRateIndex;
 
     portMode_e mode = MODE_RXTX;
+    portOptions_e options = SERIAL_NOT_INVERTED;
 
 #if defined(GPS_NMEA_TX_ONLY)
     if (gpsConfig()->provider == GPS_NMEA) {
@@ -442,8 +437,12 @@ void gpsInit(void)
     }
 #endif
 
+    if ((gpsPortConfig->identifier >= SERIAL_PORT_USART1) && (gpsPortConfig->identifier <= SERIAL_PORT_USART_MAX)){
+        options |= SERIAL_CHECK_TX;
+    }
+
     // no callback - buffer will be consumed in gpsUpdate()
-    gpsPort = openSerialPort(gpsPortConfig->identifier, FUNCTION_GPS, NULL, NULL, baudRates[gpsInitData[gpsData.userBaudRateIndex].baudrateIndex], mode, SERIAL_NOT_INVERTED);
+    gpsPort = openSerialPort(gpsPortConfig->identifier, FUNCTION_GPS, NULL, NULL, baudRates[gpsInitData[gpsData.userBaudRateIndex].baudrateIndex], mode, options);
     if (!gpsPort) {
         return;
     }
@@ -934,7 +933,6 @@ static void ubloxSetSbas(void)
 void setSatInfoMessageRate(uint8_t divisor)
 {
     // enable satInfoMessage at 1:5 of the nav rate if configurator is connected
-    divisor = (isConfiguratorConnected()) ? 5 : 0;
     if (gpsData.ubloxM9orAbove) {
          ubloxSetMessageRateValSet(CFG_MSGOUT_UBX_NAV_SAT_UART1, divisor);
     } else if (gpsData.ubloxM8orAbove) {
@@ -1101,16 +1099,11 @@ void gpsConfigureUblox(void)
                 break;
             }
 
-            // allow 3s for the Configurator connection to stabilise, to get the correct answer when we test the state of the connection.
-            // 3s is an arbitrary time at present, maybe should be defined or user adjustable.
-            // This delays the appearance of GPS data in OSD when not connected to configurator by 3s.
-            // Note that state_ts is set to millis() on the previous gpsSetState() command
-            if (!isConfiguratorConnected()) {
-               if (cmp32(gpsData.now, gpsData.state_ts) < 3000) {
-                   return;
-               }
+            // Add delay to stabilize the connection
+            if (cmp32(gpsData.now, gpsData.state_ts) < 1000) {
+                return;
             }
-
+    
             if (gpsData.ackState == UBLOX_ACK_IDLE) {
 
                 // short delay before between commands, including the first command
@@ -2563,6 +2556,13 @@ void GPS_reset_home_position(void)
             // PS: to test for gyro cal, check for !ARMED, since we cannot be here while disarmed other than via gyro cal
         }
     }
+
+#ifdef USE_GPS_UBLOX
+    // disable Sat Info requests on arming
+    if (gpsConfig()->provider == GPS_UBLOX) {
+        setSatInfoMessageRate(0);
+    }
+#endif
     GPS_calculateDistanceFlown(true); // Initialize
 }
 

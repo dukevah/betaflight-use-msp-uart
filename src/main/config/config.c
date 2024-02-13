@@ -125,7 +125,7 @@ PG_RESET_TEMPLATE(systemConfig_t, systemConfig,
     .powerOnArmingGraceTime = 5,
     .boardIdentifier = TARGET_BOARD_IDENTIFIER,
     .hseMhz = SYSTEM_HSE_MHZ,  // Only used for F4 and G4 targets
-    .configurationState = CONFIGURATION_STATE_DEFAULTS_BARE,
+    .configurationState = CONFIGURATION_STATE_UNCONFIGURED,
     .enableStickArming = false,
 );
 
@@ -229,7 +229,7 @@ static void validateAndFixConfig(void)
     }
 #endif
 
-    if (!isSerialConfigValid(serialConfig())) {
+    if (!isSerialConfigValid(serialConfigMutable())) {
         pgResetFn_serialConfig(serialConfigMutable());
     }
 
@@ -411,6 +411,10 @@ static void validateAndFixConfig(void)
 #endif
 #endif // USE_ADC
 
+    // Bounds check gyro filter selection in case prior build had USE_GYRO_DLPF_EXPERIMENTAL defined
+    if (gyroConfig()->gyro_hardware_lpf >= GYRO_HARDWARE_LPF_COUNT) {
+        gyroConfigMutable()->gyro_hardware_lpf = GYRO_HARDWARE_LPF_NORMAL;
+    }
 
 // clear features that are not supported.
 // I have kept them all here in one place, some could be moved to sections of code above.
@@ -475,16 +479,10 @@ static void validateAndFixConfig(void)
     featureDisableImmediate(FEATURE_RSSI_ADC);
 #endif
 
-// Enable features in Cloud Build
-#ifdef CLOUD_BUILD
-
-if (systemConfig()->configurationState == CONFIGURATION_STATE_DEFAULTS_BARE) {
+if (systemConfig()->configurationState == CONFIGURATION_STATE_UNCONFIGURED) {
 
 #ifdef USE_DASHBOARD
     featureEnableImmediate(FEATURE_DASHBOARD);
-#endif
-#ifdef USE_GPS
-    featureEnableImmediate(FEATURE_GPS);
 #endif
 #ifdef USE_LED_STRIP
     featureEnableImmediate(FEATURE_LED_STRIP);
@@ -511,9 +509,6 @@ if (systemConfig()->configurationState == CONFIGURATION_STATE_DEFAULTS_BARE) {
 
 }
 
-#endif // CLOUD_BUILD
-
-
 #if defined(USE_BEEPER)
 #ifdef USE_TIMER
     if (beeperDevConfig()->frequency && !timerGetConfiguredByTag(beeperDevConfig()->ioTag)) {
@@ -527,7 +522,7 @@ if (systemConfig()->configurationState == CONFIGURATION_STATE_DEFAULTS_BARE) {
 
 #ifdef USE_DSHOT
     if (beeperConfig()->dshotBeaconOffFlags & ~DSHOT_BEACON_ALLOWED_MODES) {
-        beeperConfigMutable()->dshotBeaconOffFlags = 0;
+        beeperConfigMutable()->dshotBeaconOffFlags = DEFAULT_DSHOT_BEACON_OFF_FLAGS;
     }
 
     if (beeperConfig()->dshotBeaconTone < DSHOT_CMD_BEACON1
@@ -673,15 +668,24 @@ void validateAndFixGyroConfig(void)
         // check for looptime restrictions based on motor protocol. Motor times have safety margin
         float motorUpdateRestriction;
 
-#if defined(STM32F4) || defined(STM32G4)
+#if defined(USE_DSHOT) && defined(USE_PID_DENOM_CHECK)
         /* If bidirectional DSHOT is being used on an F4 or G4 then force DSHOT300. The motor update restrictions then applied
          * will automatically consider the loop time and adjust pid_process_denom appropriately
          */
-        if (motorConfig()->dev.useDshotTelemetry && (motorConfig()->dev.motorPwmProtocol == PWM_TYPE_DSHOT600)) {
-            motorConfigMutable()->dev.motorPwmProtocol = PWM_TYPE_DSHOT300;
-        }
+        if (true
+#ifdef USE_PID_DENOM_OVERCLOCK_LEVEL
+        && (systemConfig()->cpu_overclock < USE_PID_DENOM_OVERCLOCK_LEVEL) 
 #endif
-
+        && motorConfig()->dev.useDshotTelemetry
+        ) {
+            if (motorConfig()->dev.motorPwmProtocol == PWM_TYPE_DSHOT600) {
+                motorConfigMutable()->dev.motorPwmProtocol = PWM_TYPE_DSHOT300;
+            }
+            if (gyro.sampleRateHz > 4000) {
+                pidConfigMutable()->pid_process_denom = 2;
+            }
+        }
+#endif // USE_DSHOT && USE_PID_DENOM_CHECK
         switch (motorConfig()->dev.motorPwmProtocol) {
         case PWM_TYPE_STANDARD:
                 motorUpdateRestriction = 1.0f / BRUSHLESS_MOTORS_PWM_RATE;

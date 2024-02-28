@@ -15,6 +15,7 @@
  * along with Cleanflight.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 
 extern "C" {
@@ -1160,4 +1161,5 @@ extern "C" {
         return 0.0f;
     }
     void getRcDeflectionAbs(void) {}
+    uint32_t getCpuPercentageLate(void) { return 0; };
 }

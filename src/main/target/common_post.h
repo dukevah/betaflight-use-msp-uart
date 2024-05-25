@@ -51,13 +51,13 @@
 #else
 #define FAST_CODE                   __attribute__((section(".tcm_code")))
 #endif
-// Handle case where we'd prefer code to be in ITCM, but it won't fit on the F745
-#ifdef STM32F745xx
-#define FAST_CODE_PREF
-#else
-#define FAST_CODE_PREF                  __attribute__((section(".tcm_code")))
+// Handle case where we'd prefer code to be in ITCM, but it won't fit on the device
+#ifndef FAST_CODE_PREF
+#define FAST_CODE_PREF              FAST_CODE
 #endif
+
 #define FAST_CODE_NOINLINE          NOINLINE
+
 #else
 #define FAST_CODE
 #define FAST_CODE_PREF
@@ -323,7 +323,7 @@
 #endif
 #endif
 
-#if (defined(USE_FLASH_W25M512) || defined(USE_FLASH_W25Q128FV)) && !defined(USE_FLASH_M25P16)
+#if (defined(USE_FLASH_W25M512) || defined(USE_FLASH_W25Q128FV) || defined(USE_FLASH_PY25Q128HA)) && !defined(USE_FLASH_M25P16)
 #if !defined(USE_FLASH_M25P16)
 #define USE_FLASH_M25P16
 #endif
@@ -416,7 +416,9 @@
 #endif
 #endif
 
-#if defined(USE_GYRO_SPI_ICM20689) || defined(USE_GYRO_SPI_MPU6000) || defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250) || defined(USE_GYRO_L3GD20) || defined(USE_GYRO_SPI_ICM42605) || defined(USE_GYRO_SPI_ICM42688P) || defined(USE_ACCGYRO_BMI160) || defined(USE_ACCGYRO_BMI270)
+#if defined(USE_GYRO_SPI_ICM20689) || defined(USE_GYRO_SPI_MPU6000) || defined(USE_GYRO_SPI_MPU6500) || defined(USE_GYRO_SPI_MPU9250) \
+    || defined(USE_GYRO_L3GD20) || defined(USE_GYRO_SPI_ICM42605) || defined(USE_GYRO_SPI_ICM42688P) || defined(USE_ACCGYRO_BMI160) \
+    || defined(USE_ACCGYRO_BMI270) || defined(USE_ACCGYRO_LSM6DSV16X) || defined(USE_ACCGYRO_LSM6DSO)
 #ifndef USE_SPI_GYRO
 #define USE_SPI_GYRO
 #endif
